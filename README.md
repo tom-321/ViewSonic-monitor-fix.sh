@@ -1,4 +1,4 @@
-If you have a slow Monitor on your MacBook you can do something like this, to continue working until the monitors up:
+If you have a slow Monitor on your MacBook you can do something like this, to continue working until the monitor's up:
  there is a tool displayplacer for MacOS to switch the monitor so it could be a work around for the 3-5 seconds til the monitors up (for people who use a MacBook). This is the script I wrote: 
 
 ```
