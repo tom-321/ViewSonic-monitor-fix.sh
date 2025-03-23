@@ -35,7 +35,7 @@ Just replace >>EXTERNAL-MONITOR-ID<< and >>BUILD-IN-MONITOR-ID<< with the ID of 
 
 
 
-PS for loading the script at login (wake up of the display) you need to trigger it via Hammerspoon:
+PS for loading the script at wake up of the display you need to trigger it via Hammerspoon:
 ```
 -- Variable to prevent multiple executions
 local isRunning = false
