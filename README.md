@@ -1,3 +1,9 @@
+Needed: 
+
+-[displayplacer](https://github.com/jakehilborn/displayplacer)
+    
+-[Hammerspoon](https://www.hammerspoon.org/)
+
 If you have a slow Monitor on your MacBook you can do something like this, to continue working until the monitor's up:
  there is a tool **displayplacer** for MacOS, to switch the monitor, so it could be a work around for the 3-5 seconds til the monitors up. 
 This is the script I wrote: 
@@ -32,10 +38,12 @@ echo "External monitor set as the primary display."
 
 
 Just replace >>EXTERNAL-MONITOR-ID<< and >>BUILD-IN-MONITOR-ID<< with the ID of your monitor ;)
-
-
+<br/>
+<br/>
+<br/>
 
 For loading the script at wake up of the display you need to trigger it via [Hammerspoon](https://www.hammerspoon.org/):
+  
 PS if any errors occur, check to console in Hammerspoon for logs
 ```
 local lastScreenIDs = {}
