@@ -35,44 +35,94 @@ Just replace >>EXTERNAL-MONITOR-ID<< and >>BUILD-IN-MONITOR-ID<< with the ID of 
 
 
 
-PS for loading the script at wake up of the display you need to trigger it via [Hammerspoon](https://www.hammerspoon.org/):
+For loading the script at wake up of the display you need to trigger it via [Hammerspoon](https://www.hammerspoon.org/):
+PS if any errors occur, check to console in Hammerspoon for logs
 ```
--- Variable to prevent multiple executions
-local isRunning = false
+local lastScreenIDs = {}
+local lastExecutionTime = 0
+local cooldownTime = 15 -- Cooldown in seconds
 
-local function runMonitorFixScript()
-  if isRunning then return end
-  isRunning = true
-  hs.notify.new({title="Monitor Fix", informativeText="Script is running..."}):send()
-  
-  -- Adjust the path to your script
-  hs.execute("/Users/yourusername/scripts/monitorfix.sh", function(exitCode, stdOut, stdErr)
-    hs.notify.new({title="Monitor Fix", informativeText="Script finished."}):send()
-    isRunning = false
-  end)
+function runMonitorFixScript(reason)
+    local currentTime = hs.timer.secondsSinceEpoch()
+    if currentTime - lastExecutionTime < cooldownTime then
+        print("⏳ Cooldown active – Script will not run again.")
+        return
+    end
+    lastExecutionTime = currentTime
+
+    print("🚀 runMonitorFixScript() started by: " .. reason)
+    hs.execute("/path/to/your/script.sh")
 end
 
--- Screen Watcher: reacts to physical changes (monitor on/off)
-local lastScreens = hs.fnutils.map(hs.screen.allScreens(), function(screen) return screen:id() end)
-local function screenChanged()
-  local currentScreens = hs.fnutils.map(hs.screen.allScreens(), function(screen) return screen:id() end)
-  if #currentScreens ~= #lastScreens then
-    lastScreens = currentScreens
-    runMonitorFixScript()
-  else
-    -- Optional detailed check: Compare the IDs if needed.
-  end
+function getScreenIDs()
+    local ids = {}
+    for _, screen in ipairs(hs.screen.allScreens()) do
+        table.insert(ids, screen:id())
+    end
+    table.sort(ids)
+    return ids
 end
-local screenWatcher = hs.screen.watcher.new(screenChanged)
+
+function hasScreenChanged()
+    local newIDs = getScreenIDs()
+    if #newIDs ~= #lastScreenIDs then return true end
+
+    for i, id in ipairs(newIDs) do
+        if id ~= lastScreenIDs[i] then return true end
+    end
+
+    return false
+end
+
+-- Screen Watcher
+screenWatcher = hs.screen.watcher.new(function()
+    local screenCount = #hs.screen.allScreens()
+    print("Screen Watcher: New monitor count: " .. screenCount .. " (Previously: " .. #lastScreenIDs .. ")")
+
+    if hasScreenChanged() then
+        print("✅ Changes detected: Monitor setup has changed!")
+        lastScreenIDs = getScreenIDs()
+        hs.timer.doAfter(2, function()
+            print("⏳ Delay finished, script will run...")
+            runMonitorFixScript("Screen Watcher: Monitor changed")
+        end)
+    else
+        print("⚠️ No changes detected in the monitors.")
+    end
+end)
+
+-- Caffeinate Watcher for Display Wakeup
+caffeinateWatcher = hs.caffeinate.watcher.new(function(event)
+    if event == hs.caffeinate.watcher.screensDidWake then
+        print("🖥️ Screen awakened – Checking monitors...")
+
+        -- Check immediately
+        if hasScreenChanged() then
+            print("✅ Change detected immediately after wakeup!")
+            lastScreenIDs = getScreenIDs()
+            runMonitorFixScript("Caffeinate Watcher: ScreensDidWake")
+        else
+            print("🔄 No immediate change detected – rechecking in 5 seconds...")
+            
+            -- Check again after 5 seconds
+            hs.timer.doAfter(5, function()
+                if hasScreenChanged() then
+                    print("✅ Change detected after 5 seconds!")
+                    lastScreenIDs = getScreenIDs()
+                    runMonitorFixScript("Caffeinate Watcher: Delayed detection")
+                else
+                    print("⚠️ No detectable change, running script anyway.")
+                    runMonitorFixScript("Caffeinate Watcher: Safety execution after wakeup")
+                end
+            end)
+        end
+    end
+end)
+
+-- Start Watchers
+lastScreenIDs = getScreenIDs()
 screenWatcher:start()
-
--- Caffeinate Watcher: reacts when the screens "wake up"
-local function caffeinateHandler(event)
-  if event == hs.caffeinate.watcher.screensDidWake then
-    runMonitorFixScript()
-  end
-end
-local caffeinateWatcher = hs.caffeinate.watcher.new(caffeinateHandler)
 caffeinateWatcher:start()
+
 
 ```
