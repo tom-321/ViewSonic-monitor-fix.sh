@@ -33,14 +33,45 @@ echo "External monitor set as the primary display."
 Just replace >>EXTERNAL-MONITOR-ID<< and >>BUILD-IN-MONITOR-ID<< with the ID of your monitor ;)
 
 
+
+PS for loading the script at login (wake up of the display) you need to trigger it via Hammerspoon:
 ```
-PS for loading the script at login (wake up of the display) you need to trigger it via Hammerspoon
--- Create a Caffeinate Watcher that reacts to unlocking
-local watcher = hs.caffeinate.watcher.new(function(event)
-if event == hs.caffeinate.watcher.screensDidUnlock then
-hs.execute("/Users/USERNAME/scripts/monitorfix.sh")
+-- Variable to prevent multiple executions
+local isRunning = false
+
+local function runMonitorFixScript()
+  if isRunning then return end
+  isRunning = true
+  hs.notify.new({title="Monitor Fix", informativeText="Script is running..."}):send()
+  
+  -- Adjust the path to your script
+  hs.execute("/Users/yourusername/scripts/monitorfix.sh", function(exitCode, stdOut, stdErr)
+    hs.notify.new({title="Monitor Fix", informativeText="Script finished."}):send()
+    isRunning = false
+  end)
 end
-end)
-watcher:start()
+
+-- Screen Watcher: reacts to physical changes (monitor on/off)
+local lastScreens = hs.fnutils.map(hs.screen.allScreens(), function(screen) return screen:id() end)
+local function screenChanged()
+  local currentScreens = hs.fnutils.map(hs.screen.allScreens(), function(screen) return screen:id() end)
+  if #currentScreens ~= #lastScreens then
+    lastScreens = currentScreens
+    runMonitorFixScript()
+  else
+    -- Optional detailed check: Compare the IDs if needed.
+  end
+end
+local screenWatcher = hs.screen.watcher.new(screenChanged)
+screenWatcher:start()
+
+-- Caffeinate Watcher: reacts when the screens "wake up"
+local function caffeinateHandler(event)
+  if event == hs.caffeinate.watcher.screensDidWake then
+    runMonitorFixScript()
+  end
+end
+local caffeinateWatcher = hs.caffeinate.watcher.new(caffeinateHandler)
+caffeinateWatcher:start()
 
 ```
